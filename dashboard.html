@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ToolkitAI Dashboard</title>
+<style>
+  :root{--bg:#0a0a0f;--sidebar:#0e0e16;--card:#13131a;--border:#1e1e2e;--accent:#7c3aed;--accent2:#a855f7;--text:#e2e2f0;--muted:#6b7280;--green:#10b981;--sidebar-w:260px}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;height:100vh;overflow:hidden}
+
+  /* SIDEBAR */
+  .sidebar{width:var(--sidebar-w);background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+  .sidebar-logo{padding:1.25rem 1.5rem;font-size:1.1rem;font-weight:800;border-bottom:1px solid var(--border);letter-spacing:-.5px}
+  .sidebar-logo span{color:var(--accent2)}
+  .sidebar-section{padding:.75rem 1rem .25rem;font-size:.7rem;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase}
+  .tool-btn{display:flex;align-items:center;gap:.75rem;padding:.7rem 1.25rem;cursor:pointer;border-radius:8px;margin:.1rem .5rem;font-size:.9rem;transition:background .15s;border:none;background:transparent;color:var(--text);width:calc(100% - 1rem);text-align:left}
+  .tool-btn:hover{background:rgba(124,58,237,.1)}
+  .tool-btn.active{background:rgba(124,58,237,.2);color:var(--accent2)}
+  .tool-btn .icon{font-size:1.1rem;flex-shrink:0}
+  .tool-btn .name{font-size:.875rem;font-weight:500}
+
+  /* MAIN */
+  .main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+  .topbar{padding:1.25rem 2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:1rem;flex-shrink:0}
+  .topbar h1{font-size:1.1rem;font-weight:700}
+  .topbar .desc{color:var(--muted);font-size:.875rem;margin-left:.25rem}
+  .content{padding:2rem;flex:1;max-width:800px;width:100%}
+
+  /* WELCOME */
+  .welcome{text-align:center;padding:4rem 2rem}
+  .welcome h2{font-size:1.8rem;font-weight:800;margin-bottom:.75rem}
+  .welcome p{color:var(--muted);max-width:400px;margin:0 auto}
+  .welcome-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-top:2.5rem;text-align:left}
+  .welcome-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;cursor:pointer;transition:border-color .2s}
+  .welcome-card:hover{border-color:var(--accent)}
+  .welcome-card .wi{font-size:1.5rem;margin-bottom:.5rem}
+  .welcome-card .wn{font-size:.875rem;font-weight:600}
+
+  /* TOOL UI */
+  .tool-ui{display:none}
+  .tool-ui.active{display:block}
+  .field-group{margin-bottom:1.25rem}
+  label{display:block;font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.5px}
+  input[type=text],textarea{width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:.75rem 1rem;color:var(--text);font-size:.95rem;font-family:inherit;resize:vertical;transition:border-color .2s;outline:none}
+  input[type=text]:focus,textarea:focus{border-color:var(--accent)}
+  textarea{min-height:120px}
+  .generate-btn{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;padding:.85rem 2rem;border-radius:10px;font-size:.95rem;font-weight:700;cursor:pointer;transition:transform .15s,opacity .15s;margin-top:.5rem}
+  .generate-btn:hover{transform:translateY(-1px)}
+  .generate-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .generate-btn .spinner{display:none;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:.5rem;vertical-align:middle}
+  .generate-btn.loading .spinner{display:inline-block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* OUTPUT */
+  .output-box{margin-top:2rem;display:none}
+  .output-box.visible{display:block}
+  .output-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem}
+  .output-label{font-size:.8rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .copy-btn{background:var(--card);border:1px solid var(--border);color:var(--text);padding:.35rem .85rem;border-radius:7px;font-size:.8rem;cursor:pointer;transition:border-color .2s}
+  .copy-btn:hover{border-color:var(--accent)}
+  .output-content{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;white-space:pre-wrap;font-size:.95rem;line-height:1.7;min-height:120px}
+  .error-msg{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:10px;padding:1rem;margin-top:1rem;font-size:.9rem;display:none}
+  .error-msg.visible{display:block}
+
+  /* RESPONSIVE */
+  @media(max-width:640px){
+    body{flex-direction:column}
+    .sidebar{width:100%;height:auto;border-right:none;border-bottom:1px solid var(--border)}
+    .main{overflow-y:auto}
+    .content{padding:1rem}
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-logo">Toolkit<span>AI</span></div>
+  <div style="padding:.5rem 0">
+    <div class="sidebar-section">Tools</div>
+    {% for id, tool in tools.items() %}
+    <button class="tool-btn" data-tool="{{ id }}" onclick="selectTool('{{ id }}')">
+      <span class="icon">{{ tool.icon }}</span>
+      <span class="name">{{ tool.name }}</span>
+    </button>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div>
+      <span id="topbar-title" style="font-size:1.1rem;font-weight:700">ToolkitAI</span>
+      <span id="topbar-desc" class="desc"></span>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- Welcome screen -->
+    <div id="welcome" class="welcome">
+      <h2>Pick a tool to get started</h2>
+      <p>7 AI-powered tools for professionals. Choose from the sidebar or click a card below.</p>
+      <div class="welcome-grid">
+        {% for id, tool in tools.items() %}
+        <div class="welcome-card" onclick="selectTool('{{ id }}')">
+          <div class="wi">{{ tool.icon }}</div>
+          <div class="wn">{{ tool.name }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Tool UIs (generated dynamically) -->
+    {% for id, tool in tools.items() %}
+    <div id="tool-{{ id }}" class="tool-ui">
+      {% for field in tool.fields %}
+      <div class="field-group">
+        <label for="{{ id }}-{{ field.id }}">{{ field.label }}</label>
+        {% if field.type == 'textarea' %}
+        <textarea id="{{ id }}-{{ field.id }}" name="{{ field.id }}" placeholder="{{ field.placeholder }}" rows="5"></textarea>
+        {% else %}
+        <input type="text" id="{{ id }}-{{ field.id }}" name="{{ field.id }}" placeholder="{{ field.placeholder }}">
+        {% endif %}
+      </div>
+      {% endfor %}
+      <button class="generate-btn" onclick="generate('{{ id }}')">
+        <span class="spinner"></span>Generate →
+      </button>
+      <div class="error-msg" id="err-{{ id }}"></div>
+      <div class="output-box" id="out-{{ id }}">
+        <div class="output-header">
+          <div class="output-label">Output</div>
+          <button class="copy-btn" onclick="copyOutput('{{ id }}')">Copy</button>
+        </div>
+        <div class="output-content" id="result-{{ id }}"></div>
+      </div>
+    </div>
+    {% endfor %}
+
+  </div>
+</div>
+
+<script>
+const TOOLS = {{ tools | tojson }};
+
+function selectTool(id) {
+  // Hide welcome, hide all tool UIs
+  document.getElementById('welcome').style.display = 'none';
+  document.querySelectorAll('.tool-ui').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tool-btn').forEach(el => el.classList.remove('active'));
+
+  // Show selected
+  const ui = document.getElementById('tool-' + id);
+  if (ui) ui.classList.add('active');
+  const btn = document.querySelector('[data-tool="' + id + '"]');
+  if (btn) btn.classList.add('active');
+
+  // Update topbar
+  const tool = TOOLS[id];
+  document.getElementById('topbar-title').textContent = tool.name;
+  document.getElementById('topbar-desc').textContent = '— ' + tool.desc;
+
+  // Scroll top
+  document.querySelector('.main').scrollTo(0,0);
+}
+
+async function generate(toolId) {
+  const tool = TOOLS[toolId];
+  const fields = {};
+
+  // Collect field values
+  for (const field of tool.fields) {
+    const el = document.getElementById(toolId + '-' + field.id);
+    fields[field.id] = el ? el.value.trim() : '';
+  }
+
+  // Validate — check required fields have a value
+  const empty = tool.fields.filter(f => !fields[f.id] && f.id !== 'meeting_title');
+  if (empty.length) {
+    const errEl = document.getElementById('err-' + toolId);
+    errEl.textContent = 'Please fill in: ' + empty.map(f => f.label).join(', ');
+    errEl.classList.add('visible');
+    return;
+  }
+  document.getElementById('err-' + toolId).classList.remove('visible');
+
+  // Update button state
+  const btn = document.querySelector('#tool-' + toolId + ' .generate-btn');
+  btn.classList.add('loading');
+  btn.disabled = true;
+  btn.childNodes[1].textContent = 'Generating…';
+
+  // Hide output
+  document.getElementById('out-' + toolId).classList.remove('visible');
+
+  try {
+    const resp = await fetch('/api/generate', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({tool: toolId, fields})
+    });
+    const data = await resp.json();
+
+    if (data.error) throw new Error(data.error);
+
+    document.getElementById('result-' + toolId).textContent = data.result;
+    document.getElementById('out-' + toolId).classList.add('visible');
+  } catch(e) {
+    const errEl = document.getElementById('err-' + toolId);
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.classList.add('visible');
+  } finally {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+    btn.childNodes[1].textContent = 'Generate →';
+  }
+}
+
+async function copyOutput(toolId) {
+  const text = document.getElementById('result-' + toolId).textContent;
+  await navigator.clipboard.writeText(text);
+  const btn = document.querySelector('#out-' + toolId + ' .copy-btn');
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = 'Copy', 1500);
+}
+</script>
+</body>
+</html>
